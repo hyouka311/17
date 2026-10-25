@@ -1,0 +1,29 @@
+name: build-libcheat
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with: { ndk-version: r26d }
+      - name: Fetch ImGui and And64InlineHook
+        run: |
+          mkdir -p third_party/and64
+          git clone --depth 1 --branch v1.90.9 https://github.com/ocornut/imgui third_party/imgui
+          git clone --depth 1 https://github.com/Rprop/And64InlineHook /tmp/and64
+          cp /tmp/and64/And64InlineHook.cpp /tmp/and64/And64InlineHook.hpp third_party/and64/
+          ls third_party/and64
+      - name: Build libcheat.so
+        run: |
+          cmake -B out \
+            -DCMAKE_TOOLCHAIN_FILE=${{ steps.ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 -DCMAKE_BUILD_TYPE=Release
+          cmake --build out -j4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libcheat
+          path: |
+            out/libcheat.so
+            out/injector
